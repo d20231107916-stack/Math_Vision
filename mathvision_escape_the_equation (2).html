@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MathVision — Escape the Equation</title>
+<!-- p5.js Library for Particle Canvas -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+<!-- Font Awesome Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+:root {
+  --neon-cyan: #00f3ff;
+  --neon-magenta: #ff00a0;
+  --neon-gold: #ffd700;
+  --neon-green: #00ff66;
+  --neon-red: #ff3366;
+  --bg-dark: #030814;
+  --panel-bg: rgba(7, 19, 43, 0.75);
+  --glass-border: rgba(0, 243, 255, 0.35);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #e6f7ff;
+  background-color: var(--bg-dark);
+  min-height: 100vh;
+  overflow-x: hidden;
+  user-select: none;
+}
+
+/* Background Canvas */
+#canvas-container {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* App Container */
+.app {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* Glassmorphism Screens */
+.screen {
+  display: none;
+  width: min(1000px, 95vw);
+  min-height: 600px;
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 0 40px rgba(0, 243, 255, 0.15), inset 0 0 20px rgba(0, 243, 255, 0.05);
+  padding: clamp(20px, 4vw, 40px);
+  position: relative;
+  flex-direction: column;
+}
+
+.screen.active {
+  display: flex;
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Typography & Glows */
+.logo {
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  font-weight: 900;
+  text-align: center;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, #ffffff 0%, var(--neon-cyan) 60%, var(--neon-magenta) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 30px rgba(0, 243, 255, 0.4);
+  margin-bottom: 4px;
+}
+
+.tagline {
+  text-align: center;
+  font-size: 0.95rem;
+  letter-spacing: 4px;
+  color: var(--neon-cyan);
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+}
+
+h1, h2, h3 { margin-top: 0; font-weight: 800; }
+h2 { font-size: clamp(1.4rem, 3vw, 2.2rem); color: #ffffff; }
+
+/* Buttons */
+.btn {
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+  border: 1px solid var(--neon-cyan);
+  background: rgba(0, 243, 255, 0.1);
+  color: var(--neon-cyan);
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.btn:hover {
+  background: var(--neon-cyan);
+  color: #030814;
+  box-shadow: 0 0 25px rgba(0, 243, 255, 0.6);
+  transform: translateY(-2px);
+}
+
+.btn:active { transform: translateY(1px); }
+
+.btn.green {
+  border-color: var(--neon-green);
+  color: var(--neon-green);
+  background: rgba(0, 255, 102, 0.1);
+  box-shadow: 0 0 15px rgba(0, 255, 102, 0.2);
+}
+.btn.green:hover { background: var(--neon-green); color: #030814; box-shadow: 0 0 25px rgba(0, 255, 102, 0.6); }
+
+.btn.gold {
+  border-color: var(--neon-gold);
+  color: var(--neon-gold);
+  background: rgba(255, 215, 0, 0.1);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+}
+.btn.gold:hover { background: var(--neon-gold); color: #030814; box-shadow: 0 0 25px rgba(255, 215, 0, 0.6); }
+
+.btn.magenta {
+  border-color: var(--neon-magenta);
+  color: var(--neon-magenta);
+  background: rgba(ff, 0, 160, 0.1);
+  box-shadow: 0 0 15px rgba(255, 0, 160, 0.2);
+}
+.btn.magenta:hover { background: var(--neon-magenta); color: #ffffff; box-shadow: 0 0 25px rgba(255, 0, 160, 0.6); }
+
+.btn.small { padding: 8px 14px; font-size: 0.85rem; }
+
+/* Panels & Layouts */
+.panel {
+  background: rgba(4, 12, 31, 0.6);
+  border: 1px solid rgba(0, 243, 255, 0.2);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.03);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  align-items: center;
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .hero { grid-template-columns: 1fr; }
+}
+
+/* Portal Visual */
+.portal-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  min-height: 250px;
+}
+
+.portal-ring {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  border: 4px dashed var(--neon-cyan);
+  animation: rotatePortal 12s linear infinite;
+  box-shadow: 0 0 30px var(--neon-cyan), inset 0 0 30px var(--neon-cyan);
+}
+
+.portal-ring-inner {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 3px solid var(--neon-magenta);
+  animation: rotatePortalReverse 8s linear infinite;
+  box-shadow: 0 0 20px var(--neon-magenta);
+}
+
+.portal-core {
+  position: absolute;
+  font-size: 3.5rem;
+  color: #fff;
+  text-shadow: 0 0 20px var(--neon-gold);
+}
+
+@keyframes rotatePortal { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes rotatePortalReverse { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+
+/* Inputs */
+input[type="text"], input[type="password"] {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 2px solid rgba(0, 243, 255, 0.4);
+  background: rgba(3, 10, 28, 0.8);
+  color: #ffffff;
+  font-size: 1.1rem;
+  outline: none;
+  transition: all 0.2s;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+input:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.4), inset 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Map Grid */
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin: 30px 0;
+}
+
+.room-card {
+  background: rgba(6, 20, 48, 0.7);
+  border: 2px solid var(--glass-border);
+  border-radius: 18px;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.room-card:hover:not(.locked) {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 25px rgba(0, 243, 255, 0.3);
+  transform: translateY(-4px);
+}
+
+.room-card.locked {
+  opacity: 0.5;
+  filter: grayscale(0.8);
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.room-card.active-room {
+  border-color: var(--neon-gold);
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.3);
+}
+
+.room-icon {
+  font-size: 2.8rem;
+  margin-bottom: 5px;
+  color: var(--neon-cyan);
+}
+
+/* Quiz UI */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.stat-pill {
+  background: rgba(3, 12, 32, 0.8);
+  border: 1px solid var(--glass-border);
+  padding: 8px 16px;
+  border-radius: 50px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+.question-box {
+  background: rgba(2, 10, 28, 0.85);
+  border: 2px solid var(--neon-cyan);
+  border-radius: 20px;
+  padding: 30px;
+  text-align: center;
+  margin: 20px 0;
+  box-shadow: 0 0 30px rgba(0, 243, 255, 0.15);
+}
+
+.question-text {
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+  letter-spacing: 1px;
+}
+
+.progress-bar {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  border: 1px solid rgba(0, 243, 255, 0.2);
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta));
+  width: 0%;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px var(--neon-cyan);
+}
+
+.feedback-msg {
+  min-height: 35px;
+  font-weight: 800;
+  text-align: center;
+  font-size: 1.1rem;
+  margin: 15px 0;
+}
+.feedback-msg.correct { color: var(--neon-green); text-shadow: 0 0 10px var(--neon-green); }
+.feedback-msg.wrong { color: var(--neon-red); text-shadow: 0 0 10px var(--neon-red); }
+
+/* Certificate */
+.certificate-frame {
+  background: rgba(5, 15, 38, 0.95);
+  border: 4px double var(--neon-gold);
+  border-radius: 20px;
+  padding: 35px;
+  text-align: center;
+  max-width: 650px;
+  margin: 0 auto;
+  box-shadow: 0 0 40px rgba(255, 215, 0, 0.2);
+  position: relative;
+}
+
+/* Dashboard Table */
+.table-container {
+  overflow-x: auto;
+  margin-top: 15px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+th, td {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0, 243, 255, 0.15);
+}
+th {
+  background: rgba(0, 243, 255, 0.1);
+  color: var(--neon-cyan);
+  font-weight: 800;
+}
+
+.center { text-align: center; }
+.flex-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.muted { color: #8ab4f8; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<main class="app">
+
+  <!-- 1. SCREEN: HOME MENU -->
+  <section class="screen active" id="scr-home">
+    <div class="logo"><i class="fa-solid fa-atom"></i> MATH<span>VISION</span></div>
+    <div class="tagline">Escape the Equation — Sci-Fi Portal</div>
+
+    <div class="hero">
+      <div class="portal-box">
+        <div class="portal-ring"></div>
+        <div class="portal-ring-inner"></div>
+        <div class="portal-core"><i class="fa-solid fa-door-open"></i></div>
+      </div>
+
+      <div class="panel center">
+        <h2>Misi Cabaran Matematik!</h2>
+        <p>Selesaikan persamaan linear, kumpulkan bintang tenaga, dan bina kod password untuk melarikan diri daripada Portal MathVision!</p>
+        
+        <div style="display:flex; flex-direction:column; gap:12px; margin-top:20px;">
+          <button class="btn green" onclick="playSound('click'); showScreen('scr-name');">
+            <i class="fa-solid fa-play"></i> Mula Bermain
+          </button>
+          <button class="btn" onclick="playSound('click'); showScreen('scr-teacher-login');">
+            <i class="fa-solid fa-user-tie"></i> Log Masuk Guru
+          </button>
+          <button class="btn magenta" onclick="playSound('click'); showScreen('scr-how');">
+            <i class="fa-solid fa-circle-info"></i> Panduan & Tajuk
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. SCREEN: NAME INPUT -->
+  <section class="screen" id="scr-name">
+    <div class="logo">MATH<span>VISION</span></div>
+    <div class="tagline">DAFTAR PENEROKA PORTAL</div>
+
+    <div class="panel center" style="max-width: 500px; margin: auto; width: 100%;">
+      <i class="fa-solid fa-user-astronaut" style="font-size: 4rem; color: var(--neon-cyan); margin-bottom: 15px;"></i>
+      <h3>Masukkan Nama Anda</h3>
+      <p class="muted">Rekod dan markah permainan anda akan disimpan untuk laporan guru.</p>
+      
+      <div style="margin: 20px 0;">
+        <input type="text" id="studentName" placeholder="Contoh: Muhammad Amir" maxlength="30" autocomplete="off">
+      </div>
+
+      <button class="btn green" onclick="startGame()">
+        MASUK PORTAL <i class="fa-solid fa-arrow-right"></i>
+      </button>
+    </div>
+    <div class="center" style="margin-top:20px;">
+      <button class="btn small" onclick="showScreen('scr-home')"><i class="fa-solid fa-chevron-left"></i> Kembali</button>
+    </div>
+  </section>
+
+  <!-- 3. SCREEN: MAP SELECTOR -->
+  <section class="screen" id="scr-map">
+    <div class="topbar">
+      <div>
+        <div class="logo" style="font-size: 1.8rem; text-align: left;">MATH<span>VISION</span></div>
+        <div class="muted">Pilih Bilik Persamaan</div>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <div class="stat-pill"><i class="fa-solid fa-heart" style="color: var(--neon-red);"></i> <span id="mapLives">3</span></div>
+        <div class="stat-pill"><i class="fa-solid fa-star" style="color: var(--neon-gold);"></i> <span id="mapStars">0</span></div>
+      </div>
+    </div>
+
+    <div class="map-grid" id="roomGrid">
+      <!-- Rooms dynamic render -->
+    </div>
+
+    <p class="center muted"><i class="fa-solid fa-lightbulb"></i> Selesaikan 5 soalan di setiap bilik untuk menjana kod password pintu!</p>
+    
+    <div class="center" style="margin-top: auto;">
+      <button class="btn small" onclick="showScreen('scr-home')"><i class="fa-solid fa-house"></i> Menu Utama</button>
+    </div>
+  </section>
+
+  <!-- 4. SCREEN: MISSION PREVIEW -->
+  <section class="screen" id="scr-mission">
+    <div class="topbar">
+      <span class="stat-pill" id="missionLevelTag">BILIK 1</span>
+      <div style="display: flex; gap: 10px;">
+        <div class="stat-pill"><i class="fa-solid fa-heart" style="color: var(--neon-red);"></i> <span id="missionLives">3</span></div>
+        <div class="stat-pill"><i class="fa-solid fa-star" style="color: var(--neon-gold);"></i> <span id="missionStars">0</span></div>
+      </div>
+    </div>
+
+    <div class="center" style="max-width: 650px; margin: auto;">
+      <h2 id="missionTitle" style="color: var(--neon-cyan);">BILIK 1</h2>
+      <p id="missionDesc" class="muted">Tajuk Matematik</p>
+
+      <div class="panel" style="text-align: left; margin: 20px 0;">
+        <h4 style="margin-top:0; color:var(--neon-gold);"><i class="fa-solid fa-scroll"></i> Senarai Persamaan Misi:</h4>
+        <ol id="missionList" style="line-height: 1.8; font-weight: 600;"></ol>
+      </div>
+
+      <button class="btn green" onclick="beginQuiz()">
+        MULA CABARAN <i class="fa-solid fa-bolt"></i>
+      </button>
+      <div style="margin-top:15px;">
+        <button class="btn small" onclick="showScreen('scr-map')"><i class="fa-solid fa-chevron-left"></i> Peta Bilik</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. SCREEN: QUIZ QUESTION -->
+  <section class="screen" id="scr-quiz">
+    <div class="topbar">
+      <span class="stat-pill" id="quizLevelTag">BILIK 1</span>
+      <div style="display: flex; gap: 10px;">
+        <div class="stat-pill"><i class="fa-solid fa-heart" style="color: var(--neon-red);"></i> <span id="quizLives">3</span></div>
+        <div class="stat-pill"><i class="fa-solid fa-star" style="color: var(--neon-gold);"></i> <span id="quizStars">0</span></div>
+      </div>
+    </div>
+
+    <div style="max-width: 700px; margin: auto; width: 100%;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="muted" id="quizProgressText">Soalan 1/5</span>
+        <span class="muted" id="quizTopicText">Tajuk</span>
+      </div>
+      
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+
+      <div class="question-box">
+        <div class="question-text" id="questionText">x + 7 = 15</div>
+      </div>
+
+      <div class="center">
+        <div style="max-width: 400px; margin: 0 auto;">
+          <input type="text" id="answerInput" placeholder="Masukkan jawapan anda" autocomplete="off" style="text-align: center; font-weight: 800;">
+        </div>
+
+        <div class="feedback-msg" id="feedbackMsg"></div>
+
+        <div class="flex-row" style="margin-top: 15px;">
+          <button class="btn green" id="btnSubmit" onclick="checkAnswer()">
+            HANTAR JAWAPAN <i class="fa-solid fa-paper-plane"></i>
+          </button>
+          <button class="btn magenta" onclick="showHint()">
+            <i class="fa-solid fa-lightbulb"></i> Petunjuk
+          </button>
+        </div>
+
+        <p class="muted" id="hintText" style="margin-top: 15px; color: var(--neon-gold); min-height: 24px;"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. SCREEN: QUESTION CORRECT -->
+  <section class="screen center" id="scr-correct" style="justify-content: center;">
+    <i class="fa-solid fa-circle-check" style="font-size: 5rem; color: var(--neon-green); margin-bottom: 15px;"></i>
+    <h1 style="color: var(--neon-green);">JAWAPAN BETUL!</h1>
+    <div class="panel" style="max-width: 400px; margin: 15px auto;">
+      <h2 style="color: var(--neon-gold); margin: 0;">+10 BINTANG TENAGA</h2>
+      <p id="correctDisplayMsg" style="margin-top: 10px; font-weight: bold;"></p>
+    </div>
+    <div>
+      <button class="btn green" onclick="nextQuestion()">
+        SOALAN SETERUSNYA <i class="fa-solid fa-forward"></i>
+      </button>
+    </div>
+  </section>
+
+  <!-- 7. SCREEN: PASSWORD DOOR LOCK -->
+  <section class="screen" id="scr-password">
+    <div class="topbar">
+      <span class="stat-pill" id="passLevelTag">PASSWORD DOOR</span>
+      <div class="stat-pill"><i class="fa-solid fa-star" style="color: var(--neon-gold);"></i> <span id="passStars">0</span></div>
+    </div>
+
+    <div class="hero">
+      <div class="center">
+        <i class="fa-solid fa-lock" style="font-size: 5rem; color: var(--neon-gold); margin-bottom: 15px;"></i>
+        <h2>PINTU TERKUNCI!</h2>
+        <p class="muted">Gunakan gabungan nilai 3 jawapan pertama anda untuk menjana kod password akses pintu!</p>
+      </div>
+
+      <div class="panel center">
+        <h4>KOD PASSWORD DIJANA:</h4>
+        <div style="font-size: 2.2rem; font-weight: 900; letter-spacing: 6px; color: var(--neon-cyan); background: rgba(0,0,0,0.5); padding: 12px; border-radius: 12px; border: 1px solid var(--neon-cyan); margin: 15px 0;" id="passwordDisplay">
+          8-13-9
+        </div>
+        <p class="muted">Taip semula nombor password tanpa tanda sempang (-):</p>
+        <input type="text" id="passwordInput" placeholder="Contoh: 8139" style="text-align: center; font-weight: bold; letter-spacing: 4px;">
+        <div class="feedback-msg" id="passFeedback"></div>
+        <button class="btn green" onclick="unlockDoor()" style="margin-top: 15px; width: 100%;">
+          <i class="fa-solid fa-key"></i> BUKA PINTU
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. SCREEN: UNLOCKED / SUCCESS -->
+  <section class="screen center" id="scr-unlocked" style="justify-content: center;">
+    <i class="fa-solid fa-door-open" style="font-size: 5rem; color: var(--neon-cyan); margin-bottom: 15px;"></i>
+    <h1 style="color: var(--neon-cyan);">AKSES DITERIMA!</h1>
+    <h2 id="unlockTitle">Bilik Selesai!</h2>
+    <p id="unlockDesc" class="muted">Anda berjaya membuka akses ke bilik seterusnya.</p>
+    
+    <div style="margin: 20px 0;">
+      <button class="btn gold" onclick="continueAfterUnlock()">
+        TERUSKAN MISI <i class="fa-solid fa-arrow-right"></i>
+      </button>
+    </div>
+  </section>
+
+  <!-- 9. SCREEN: FINAL ROOM -->
+  <section class="screen" id="scr-final">
+    <div class="topbar">
+      <span class="stat-pill" style="border-color: var(--neon-magenta); color: var(--neon-magenta);">FINAL PORTAL</span>
+      <div style="display: flex; gap: 10px;">
+        <div class="stat-pill"><i class="fa-solid fa-heart" style="color: var(--neon-red);"></i> <span id="finalLives">3</span></div>
+        <div class="stat-pill"><i class="fa-solid fa-star" style="color: var(--neon-gold);"></i> <span id="finalStars">0</span></div>
+      </div>
+    </div>
+
+    <div class="center" style="max-width: 700px; margin: auto;">
+      <i class="fa-solid fa-shield-halved" style="font-size: 3.5rem; color: var(--neon-magenta); margin-bottom: 10px;"></i>
+      <h2>CABARAN TERAKHIR PORTAL</h2>
+      <p class="muted">Selesaikan persamaan linear serentak aras tinggi ini untuk meloloskan diri!</p>
+
+      <div class="question-box" style="border-color: var(--neon-magenta);">
+        <div class="question-text" id="finalQuestionText">2x + y = 10 <br> x - y = 2</div>
+      </div>
+
+      <div style="max-width: 400px; margin: 0 auto;">
+        <input type="text" id="finalAnswerInput" placeholder="Format: x=4, y=2" style="text-align: center; font-weight: bold;">
+      </div>
+      <div class="feedback-msg" id="finalFeedback"></div>
+
+      <button class="btn magenta" onclick="checkFinalAnswer()" style="margin-top: 15px;">
+        TAMATKAN MISI <i class="fa-solid fa-trophy"></i>
+      </button>
+    </div>
+  </section>
+
+  <!-- 10. SCREEN: CERTIFICATE -->
+  <section class="screen center" id="scr-certificate" style="justify-content: center;">
+    <div class="certificate-frame">
+      <i class="fa-solid fa-award" style="font-size: 4rem; color: var(--neon-gold); margin-bottom: 10px;"></i>
+      <h2 style="color: var(--neon-gold); margin-bottom: 5px;">SIJIL PENCAPAIAN</h2>
+      <p style="letter-spacing: 2px; text-transform: uppercase; font-size: 0.85rem;" class="muted">MathVision Escape Portal</p>
+
+      <p style="margin-top: 20px;">Sijil ini dengan bangganya dianugerahkan kepada:</p>
+      <h1 id="certStudentName" style="color: #ffffff; border-bottom: 2px solid var(--neon-gold); padding-bottom: 10px; margin: 10px 0;">Nama Murid</h1>
+      <p>Kerana telah berjaya menguasai tajuk <b>Persamaan Linear (Satu Pemboleh Ubah, Dua Pemboleh Ubah & Serentak)</b> dengan skor:</p>
+      <h2 style="color: var(--neon-cyan);"><i class="fa-solid fa-star"></i> <span id="certScore">0</span> Mata Tenaga</h2>
+
+      <p id="certDate" class="muted" style="font-size: 0.8rem; margin-top: 20px;">Tarikh: --/--/----</p>
+    </div>
+
+    <div class="flex-row" style="margin-top: 20px;">
+      <button class="btn gold" onclick="window.print()"><i class="fa-solid fa-print"></i> Cetak Sijil</button>
+      <button class="btn" onclick="showTeacherDashboard()"><i class="fa-solid fa-chart-line"></i> Papan Pemuka Guru</button>
+      <button class="btn green" onclick="resetGame()"><i class="fa-solid fa-rotate-right"></i> Main Semula</button>
+    </div>
+  </section>
+
+  <!-- 11. SCREEN: TEACHER LOGIN & DASHBOARD -->
+  <section class="screen" id="scr-teacher-login">
+    <div class="center" style="max-width: 450px; margin: auto; width: 100%;">
+      <i class="fa-solid fa-user-lock" style="font-size: 4rem; color: var(--neon-cyan); margin-bottom: 15px;"></i>
+      <h2>Log Masuk Guru</h2>
+      <p class="muted">Masukkan kod akses demo untuk melihat laporan pencapaian murid.</p>
+
+      <div style="margin: 20px 0;">
+        <input type="password" id="teacherCodeInput" placeholder="Kod Demo: GURU123" style="text-align: center;">
+      </div>
+      <div class="feedback-msg" id="teacherLoginFeedback"></div>
+
+      <button class="btn green" onclick="verifyTeacherLogin()">LOG MASUK <i class="fa-solid fa-right-to-bracket"></i></button>
+      <div style="margin-top: 15px;">
+        <button class="btn small" onclick="showScreen('scr-home')"><i class="fa-solid fa-chevron-left"></i> Kembali</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-dashboard">
+    <div class="topbar">
+      <div>
+        <h2><i class="fa-solid fa-chart-pie"></i> Papan Pemuka Guru</h2>
+        <p class="muted">Rekod Pencapaian Sesi Matematik Murid</p>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn small green" onclick="exportCSV()"><i class="fa-solid fa-file-csv"></i> Muat Turun CSV</button>
+        <button class="btn small" onclick="showScreen('scr-home')"><i class="fa-solid fa-house"></i> Menu Utama</button>
+      </div>
+    </div>
+
+    <div class="panel table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Nama Murid</th>
+            <th>Bilik 1 (1 Pembolehubah)</th>
+            <th>Bilik 2 (2 Pembolehubah)</th>
+            <th>Bilik 3 (Serentak)</th>
+            <th>Final Portal</th>
+            <th>Jumlah Bintang</th>
+            <th>Tarikh</th>
+          </tr>
+        </thead>
+        <tbody id="dashboardTableBody">
+          <!-- Records inserted dynamically -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 12. SCREEN: HOW TO PLAY -->
+  <section class="screen" id="scr-how">
+    <div class="center" style="max-width: 750px; margin: auto;">
+      <h2><i class="fa-solid fa-book-open"></i> Panduan & Tajuk Matematik</h2>
+      
+      <div class="panel" style="text-align: left; line-height: 1.7; margin: 20px 0;">
+        <h4 style="color: var(--neon-cyan);">📚 Tajuk Silibus KSSM:</h4>
+        <ul>
+          <li><b>Bilik 1 — Persamaan Linear 1 Pemboleh Ubah:</b> Mencari nilai pemboleh ubah tunggal x.</li>
+          <li><b>Bilik 2 — Persamaan Linear 2 Pemboleh Ubah:</b> Mencari nilai pemboleh ubah apabila nilai pemboleh ubah lain diberi.</li>
+          <li><b>Bilik 3 — Persamaan Linear Serentak:</b> Menyelesaikan sistem dua persamaan linear serentak bagi x dan y.</li>
+        </ul>
+
+        <h4 style="color: var(--neon-gold); margin-top: 15px;">🎮 Cara Bermain:</h4>
+        <ol>
+          <li>Selesaikan 5 soalan dalam setiap bilik untuk mengumpul 10 Bintang Tenaga per soalan.</li>
+          <li>Anda dibekalkan dengan 3 Nyawa. Jawapan salah akan mengurangkan 1 nyawa.</li>
+          <li>Di akhir bilik, gunakan jawapan anda untuk mendapatkan kod password pintu.</li>
+          <li>Lengkapkan Final Portal untuk menerima Sijil Pencapaian MathVision Master!</li>
+        </ol>
+      </div>
+
+      <button class="btn" onclick="showScreen('scr-home')"><i class="fa-solid fa-chevron-left"></i> Kembali ke Menu</button>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* ==========================================================================
+   1. GAME DATA & QUESTION BANK (KSSM MATH)
+   ========================================================================== */
+const LEVEL_DATA = [
+  {
+    id: 0,
+    title: "BILIK 1 — 1 PEMBOLEH UBAH",
+    topic: "Persamaan Linear Dalam Satu Pemboleh Ubah",
+    icon: "fa-calculator",
+    color: "#00f3ff",
+    missions: [
+      { q: "x + 7 = 15", a: 8, h: "Tolak 7 pada kedua-dua belah: x = 15 - 7" },
+      { q: "3x - 5 = 16", a: 7, h: "Tambah 5 dahulu (3x = 21), kemudian bahagikan 3." },
+      { q: "2(x + 3) = 18", a: 6, h: "Bahagi 2 dahulu (x + 3 = 9), kemudian tolak 3." },
+      { q: "x / 3 + 4 = 9", a: 15, h: "Tolak 4 dahulu (x / 3 = 5), kemudian darab 3." },
+      { q: "5x - 8 = 2x + 7", a: 5, h: "Kumpulkan x di kiri (3x) dan nombor di kanan (15)." }
+    ]
+  },
+  {
+    id: 1,
+    title: "BILIK 2 — 2 PEMBOLEH UBAH",
+    topic: "Persamaan Linear Dalam Dua Pemboleh Ubah",
+    icon: "fa-diagram-project",
+    color: "#ffd700",
+    missions: [
+      { q: "Diberi y = 2x + 3. Cari y apabila x = 4", a: 11, h: "Gantikan x = 4 ke dalam persamaan: y = 2(4) + 3" },
+      { q: "Diberi 3x + y = 12. Cari x apabila y = 3", a: 3, h: "Gantikan y = 3: 3x + 3 = 12 → 3x = 9" },
+      { q: "Diberi 2x + 3y = 18. Cari y apabila x = 0", a: 6, h: "Gantikan x = 0: 3y = 18" },
+      { q: "Diberi y = 15 - 4x. Cari x apabila y = 3", a: 3, h: "Gantikan y = 3: 3 = 15 - 4x → 4x = 12" },
+      { q: "Diberi x + 2y = 10. Cari y apabila x = 2", a: 4, h: "Gantikan x = 2: 2 + 2y = 10 → 2y = 8" }
+    ]
+  },
+  {
+    id: 2,
+    title: "BILIK 3 — PERSAMAAN SERENTAK",
+    topic: "Persamaan Linear Serentak",
+    icon: "fa-layer-group",
+    color: "#ff00a0",
+    missions: [
+      { q: "x + y = 7  dan  x - y = 1", a: "x=4, y=3", alt: [4,3], h: "Tambah kedua-dua persamaan: 2x = 8 → x = 4. Kemudian y = 3." },
+      { q: "2x + y = 10  dan  x + y = 6", a: "x=4, y=2", alt: [4,2], h: "Tolak persamaan kedua dari pertama: x = 4. Kemudian y = 2." },
+      { q: "3x + 2y = 13  dan  x - 2y = 3", a: "x=4, y=0.5", alt: [4,0.5], h: "Tambah kedua-dua persamaan: 4x = 16 → x = 4." },
+      { q: "x + y = 10  dan  2x - y = 5", a: "x=5, y=5", alt: [5,5], h: "Tambah kedua-dua persamaan: 3x = 15 → x = 5." },
+      { q: "2x + 3y = 12  dan  2x + y = 8", a: "x=3, y=2", alt: [3,2], h: "Tolak persamaan: 2y = 4 → y = 2. Kemudian x = 3." }
+    ]
+  }
+];
+
+const FINAL_MISSION = {
+  q: "2x + y = 10   dan   x - y = 2",
+  a: "x=4, y=2",
+  alt: [4, 2],
+  h: "Tambah kedua-dua persamaan: 3x = 12 → x = 4. Gantikan x = 4 untuk dapat y = 2."
+};
+
+/* ==========================================================================
+   2. STATE MANAGEMENT
+   ========================================================================== */
+let gameState = {
+  studentName: "",
+  currentLevel: 0,
+  currentIndex: 0,
+  lives: 3,
+  stars: 0,
+  unlockedLevel: 0,
+  answersGiven: [],
+  completedRooms: [false, false, false],
+  finalCompleted: false
+};
+
+let recordsDB = [];
+
+/* ==========================================================================
+   3. AUDIO SYNTHESIZER (WEB AUDIO API)
+   ========================================================================== */
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new AudioContext();
+}
+
+function playSound(type) {
+  try {
+    initAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    const now = audioCtx.currentTime;
+
+    if (type === 'click') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, now);
+      osc.frequency.exponentialRampToValueAtTime(200, now + 0.05);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } else if (type === 'correct') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.setValueAtTime(880, now + 0.1);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } else if (type === 'wrong') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.setValueAtTime(110, now + 0.15);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } else if (type === 'unlock') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, now);
+      osc.frequency.setValueAtTime(659.25, now + 0.1);
+      osc.frequency.setValueAtTime(783.99, now + 0.2);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    }
+  } catch (e) {
+    // Audio context fallback
+  }
+}
+
+/* ==========================================================================
+   4. UI NAVIGATION & CONTROL
+   ========================================================================== */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+
+  if (id === 'scr-map') renderMap();
+  if (id === 'scr-dashboard') renderDashboardTable();
+}
+
+function startGame() {
+  const nameInput = document.getElementById('studentName').value.trim();
+  if (!nameInput) {
+    alert('Sila masukkan nama anda terlebih dahulu.');
+    return;
+  }
+  playSound('click');
+  gameState.studentName = nameInput;
+  showScreen('scr-map');
+}
+
+function renderMap() {
+  document.getElementById('mapLives').textContent = gameState.lives;
+  document.getElementById('mapStars').textContent = gameState.stars;
+
+  const grid = document.getElementById('roomGrid');
+  grid.innerHTML = '';
+
+  LEVEL_DATA.forEach((room, idx) => {
+    const isLocked = idx > gameState.unlockedLevel;
+    const card = document.createElement('div');
+    card.className = `room-card ${isLocked ? 'locked' : ''} ${idx === gameState.currentLevel && !isLocked ? 'active-room' : ''}`;
+    
+    card.innerHTML = `
+      <i class="fa-solid ${isLocked ? 'fa-lock' : room.icon} room-icon" style="color: ${room.color}"></i>
+      <h3 style="margin:5px 0;">${room.title}</h3>
+      <span class="muted" style="font-size:0.8rem;">${isLocked ? 'Terkunci' : room.topic}</span>
+    `;
+
+    card.onclick = () => {
+      if (isLocked) {
+        playSound('wrong');
+        alert('Selesaikan bilik sebelumnya untuk membuka akses bilik ini.');
+        return;
+      }
+      playSound('click');
+      gameState.currentLevel = idx;
+      showMissionPreview();
+    };
+
+    grid.appendChild(card);
+  });
+
+  // Final Room Card
+  const isFinalLocked = gameState.unlockedLevel < 3;
+  const finalCard = document.createElement('div');
+  finalCard.className = `room-card ${isFinalLocked ? 'locked' : ''}`;
+  finalCard.innerHTML = `
+    <i class="fa-solid ${isFinalLocked ? 'fa-lock' : 'fa-shield-halved'} room-icon" style="color: var(--neon-magenta)"></i>
+    <h3 style="margin:5px 0;">FINAL PORTAL</h3>
+    <span class="muted" style="font-size:0.8rem;">${isFinalLocked ? 'Terkunci' : 'Cabaran Master'}</span>
+  `;
+  finalCard.onclick = () => {
+    if (isFinalLocked) {
+      playSound('wrong');
+      alert('Buka semua bilik terlebih dahulu untuk memasuki Final Portal.');
+      return;
+    }
+    playSound('click');
+    setupFinalRoom();
+  };
+  grid.appendChild(finalCard);
+}
+
+function showMissionPreview() {
+  const lvl = LEVEL_DATA[gameState.currentLevel];
+  document.getElementById('missionLevelTag').textContent = `BILIK ${lvl.id + 1}`;
+  document.getElementById('missionLives').textContent = gameState.lives;
+  document.getElementById('missionStars').textContent = gameState.stars;
+  document.getElementById('missionTitle').textContent = lvl.title;
+  document.getElementById('missionDesc').textContent = lvl.topic;
+
+  const list = document.getElementById('missionList');
+  list.innerHTML = lvl.missions.map(m => `<li>${m.q}</li>`).join('');
+
+  showScreen('scr-mission');
+}
+
+function beginQuiz() {
+  playSound('click');
+  gameState.currentIndex = 0;
+  gameState.answersGiven = [];
+  loadQuestion();
+}
+
+function loadQuestion() {
+  const lvl = LEVEL_DATA[gameState.currentLevel];
+  const qData = lvl.missions[gameState.currentIndex];
+
+  document.getElementById('quizLevelTag').textContent = `BILIK ${lvl.id + 1}`;
+  document.getElementById('quizLives').textContent = gameState.lives;
+  document.getElementById('quizStars').textContent = gameState.stars;
+  document.getElementById('quizProgressText').textContent = `Soalan ${gameState.currentIndex + 1}/5`;
+  document.getElementById('quizTopicText').textContent = lvl.topic;
+
+  const progressPct = (gameState.currentIndex / 5) * 100;
+  document.getElementById('progressFill').style.width = `${progressPct}%`;
+
+  document.getElementById('questionText').innerHTML = qData.q;
+  document.getElementById('answerInput').value = '';
+  document.getElementById('feedbackMsg').textContent = '';
+  document.getElementById('hintText').textContent = '';
+
+  showScreen('scr-quiz');
+  document.getElementById('answerInput').focus();
+}
+
+/* Helper to normalize user input answers */
+function normalizeInput(str) {
+  return String(str).toLowerCase().replace(/\s+/g, '').replace(';', ',');
+}
+
+function checkAnswer() {
+  const inputVal = document.getElementById('answerInput').value.trim();
+  if (!inputVal) return;
+
+  const lvl = LEVEL_DATA[gameState.currentLevel];
+  const qData = lvl.missions[gameState.currentIndex];
+  let isCorrect = false;
+
+  if (typeof qData.a === 'number') {
+    const num = parseFloat(inputVal.replace(',', '.'));
+    if (!isNaN(num) && Math.abs(num - qData.a) < 0.001) {
+      isCorrect = true;
+    }
+  } else {
+    // For string or simultaneous equations format e.g. "x=4,y=3" or "(4,3)" or "4,3"
+    const normUser = normalizeInput(inputVal);
+    const normAns = normalizeInput(qData.a);
+    
+    if (normUser === normAns) {
+      isCorrect = true;
+    } else if (qData.alt) {
+      const altStr1 = `${qData.alt[0]},${qData.alt[1]}`;
+      const altStr2 = `(${qData.alt[0]},${qData.alt[1]})`;
+      if (normUser === altStr1 || normUser === altStr2) isCorrect = true;
+    }
+  }
+
+  if (isCorrect) {
+    playSound('correct');
+    gameState.stars += 10;
+    gameState.answersGiven.push(qData.a);
+    document.getElementById('correctDisplayMsg').textContent = `Persamaan: ${qData.q}`;
+    showScreen('scr-correct');
+  } else {
+    playSound('wrong');
+    gameState.lives = Math.max(0, gameState.lives - 1);
+    document.getElementById('quizLives').textContent = gameState.lives;
+    
+    const fb = document.getElementById('feedbackMsg');
+    fb.className = 'feedback-msg wrong';
+    
+    if (gameState.lives === 0) {
+      fb.textContent = `Nyawa anda telah habis! Jawapan betul: ${qData.a}`;
+      setTimeout(() => {
+        alert('Nyawa habis. Sesi bilik ini dibangkitkan semula.');
+        gameState.lives = 3;
+        beginQuiz();
+      }, 1500);
+    } else {
+      fb.textContent = 'Jawapan belum tepat. Semak langkah pengiraan anda!';
+    }
+  }
+}
+
+function nextQuestion() {
+  playSound('click');
+  gameState.currentIndex++;
+  if (gameState.currentIndex < 5) {
+    loadQuestion();
+  } else {
+    // Completed all 5 questions in room -> Generate Door Password
+    gameState.completedRooms[gameState.currentLevel] = true;
+    setupPasswordDoor();
+  }
+}
+
+function showHint() {
+  playSound('click');
+  const qData = LEVEL_DATA[gameState.currentLevel].missions[gameState.currentIndex];
+  document.getElementById('hintText').textContent = `💡 Petunjuk: ${qData.h}`;
+}
+
+/* ==========================================================================
+   5. PASSWORD & UNLOCK SYSTEM
+   ========================================================================== */
+function setupPasswordDoor() {
+  const roomLvl = gameState.currentLevel;
+  // Get first 3 numeric answers to build password string
+  const rawAns = gameState.answersGiven.slice(0, 3);
+  const formattedAns = rawAns.map(a => {
+    if (typeof a === 'number') return Math.abs(Math.round(a));
+    return String(a).replace(/\D/g, '').substring(0, 2) || "7";
+  });
+
+  const displayCode = formattedAns.join('-');
+  const actualCode = formattedAns.join('');
+
+  document.getElementById('passLevelTag').textContent = `PASSWORD BILIK ${roomLvl + 1}`;
+  document.getElementById('passStars').textContent = gameState.stars;
+  document.getElementById('passwordDisplay').textContent = displayCode;
+  document.getElementById('passwordInput').value = '';
+  document.getElementById('passwordInput').dataset.targetCode = actualCode;
+  document.getElementById('passFeedback').textContent = '';
+
+  showScreen('scr-password');
+}
+
+function unlockDoor() {
+  const userInput = document.getElementById('passwordInput').value.trim().replace(/\D/g, '');
+  const targetCode = document.getElementById('passwordInput').dataset.targetCode;
+
+  if (userInput === targetCode) {
+    playSound('unlock');
+    gameState.unlockedLevel = Math.max(gameState.unlockedLevel, gameState.currentLevel + 1);
+    
+    document.getElementById('unlockTitle').textContent = `${LEVEL_DATA[gameState.currentLevel].title} SELESAI!`;
+    document.getElementById('unlockDesc').textContent = gameState.currentLevel < 2 
+      ? `Akses ke Bilik ${gameState.currentLevel + 2} kini dibuka!` 
+      : `Pintu ke Final Portal kini dibuka!`;
+
+    showScreen('scr-unlocked');
+  } else {
+    playSound('wrong');
+    const fb = document.getElementById('passFeedback');
+    fb.className = 'feedback-msg wrong';
+    fb.textContent = 'Kod password tidak sah. Semak gabungan nombor anda!';
+  }
+}
+
+function continueAfterUnlock() {
+  playSound('click');
+  if (gameState.currentLevel < 2) {
+    gameState.currentLevel++;
+    showScreen('scr-map');
+  } else {
+    setupFinalRoom();
+  }
+}
+
+/* ==========================================================================
+   6. FINAL ROOM & CERTIFICATE
+   ========================================================================== */
+function setupFinalRoom() {
+  document.getElementById('finalLives').textContent = gameState.lives;
+  document.getElementById('finalStars').textContent = gameState.stars;
+  document.getElementById('finalQuestionText').innerHTML = FINAL_MISSION.q;
+  document.getElementById('finalAnswerInput').value = '';
+  document.getElementById('finalFeedback').textContent = '';
+  showScreen('scr-final');
+}
+
+function checkFinalAnswer() {
+  const val = document.getElementById('finalAnswerInput').value.trim();
+  const normVal = normalizeInput(val);
+  const normAns = normalizeInput(FINAL_MISSION.a);
+
+  let isOk = (normVal === normAns || normVal === "x=4,y=2" || normVal === "4,2" || normVal === "(4,2)");
+
+  if (isOk) {
+    playSound('unlock');
+    gameState.stars += 30;
+    gameState.finalCompleted = true;
+
+    // Save Record
+    recordsDB.push({
+      name: gameState.studentName,
+      r1: gameState.completedRooms[0] ? '✅' : '—',
+      r2: gameState.completedRooms[1] ? '✅' : '—',
+      r3: gameState.completedRooms[2] ? '✅' : '—',
+      final: '🏆 MASTER',
+      stars: gameState.stars,
+      date: new Date().toLocaleDateString('ms-MY')
+    });
+
+    document.getElementById('certStudentName').textContent = gameState.studentName;
+    document.getElementById('certScore').textContent = gameState.stars;
+    document.getElementById('certDate').textContent = `Tarikh Dikeluarkan: ${new Date().toLocaleDateString('ms-MY')}`;
+
+    showScreen('scr-certificate');
+  } else {
+    playSound('wrong');
+    gameState.lives = Math.max(0, gameState.lives - 1);
+    document.getElementById('finalLives').textContent = gameState.lives;
+
+    const fb = document.getElementById('finalFeedback');
+    fb.className = 'feedback-msg wrong';
+    fb.textContent = `Jawapan belum tepat. ${FINAL_MISSION.h}`;
+  }
+}
+
+function resetGame() {
+  playSound('click');
+  gameState = {
+    studentName: "",
+    currentLevel: 0,
+    currentIndex: 0,
+    lives: 3,
+    stars: 0,
+    unlockedLevel: 0,
+    answersGiven: [],
+    completedRooms: [false, false, false],
+    finalCompleted: false
+  };
+  document.getElementById('studentName').value = '';
+  showScreen('scr-home');
+}
+
+/* ==========================================================================
+   7. TEACHER DASHBOARD & CSV EXPORT
+   ========================================================================== */
+function verifyTeacherLogin() {
+  const code = document.getElementById('teacherCodeInput').value.trim();
+  if (code === 'GURU123') {
+    playSound('click');
+    showTeacherDashboard();
+  } else {
+    playSound('wrong');
+    const fb = document.getElementById('teacherLoginFeedback');
+    fb.className = 'feedback-msg wrong';
+    fb.textContent = 'Kod salah. Sila guna kod demo GURU123';
+  }
+}
+
+function showTeacherDashboard() {
+  // Add active record if played but not finished final
+  if (gameState.studentName && !recordsDB.some(r => r.name === gameState.studentName)) {
+    recordsDB.push({
+      name: gameState.studentName,
+      r1: gameState.completedRooms[0] ? '✅' : '—',
+      r2: gameState.completedRooms[1] ? '✅' : '—',
+      r3: gameState.completedRooms[2] ? '✅' : '—',
+      final: gameState.finalCompleted ? '🏆 MASTER' : 'Belum',
+      stars: gameState.stars,
+      date: new Date().toLocaleDateString('ms-MY')
+    });
+  }
+  showScreen('scr-dashboard');
+}
+
+function renderDashboardTable() {
+  const tbody = document.getElementById('dashboardTableBody');
+  tbody.innerHTML = '';
+
+  if (recordsDB.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="center muted">Tiada rekod murid tersimpan setakat ini.</td></tr>`;
+    return;
+  }
+
+  recordsDB.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><b>${escapeHtml(r.name)}</b></td>
+      <td>${r.r1}</td>
+      <td>${r.r2}</td>
+      <td>${r.r3}</td>
+      <td>${r.final}</td>
+      <td style="color:var(--neon-gold); font-weight:bold;">${r.stars}</td>
+      <td class="muted">${r.date}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function exportCSV() {
+  if (recordsDB.length === 0) {
+    alert('Tiada data untuk dieksport.');
+    return;
+  }
+
+  let csvContent = "\ufeffNama Murid,Bilik 1,Bilik 2,Bilik 3,Final Portal,Bintang,Tarikh\n";
+  recordsDB.forEach(r => {
+    csvContent += `"${r.name}","${r.r1}","${r.r2}","${r.r3}","${r.final}","${r.stars}","${r.date}"\n`;
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', 'Laporan_MathVision.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// Enter Key Listeners
+document.getElementById('answerInput').addEventListener('keypress', e => { if (e.key === 'Enter') checkAnswer(); });
+document.getElementById('passwordInput').addEventListener('keypress', e => { if (e.key === 'Enter') unlockDoor(); });
+document.getElementById('finalAnswerInput').addEventListener('keypress', e => { if (e.key === 'Enter') checkFinalAnswer(); });
+
+/* ==========================================================================
+   8. P5.JS CYBERPUNK ANIMATED BACKGROUND
+   ========================================================================== */
+function setup() {
+  const canvas = createCanvas(windowWidth, windowHeight);
+  canvas.parent('canvas-container');
+  initParticles();
+}
+
+let particles = [];
+let mathSymbols = ['∑', '∫', 'π', '√x', '∞', '≈', 'x', 'y', '≠', '+', '÷'];
+
+function initParticles() {
+  particles = [];
+  for (let i = 0; i < 65; i++) {
+    particles.push(new Particle());
+  }
+}
+
+function draw() {
+  background(3, 8, 20);
+
+  // Draw Sci-Fi Cyber Grid Lines
+  stroke(0, 243, 255, 15);
+  strokeWeight(1);
+  let gridSpacing = 60;
+  for (let x = 0; x < width; x += gridSpacing) {
+    line(x, 0, x, height);
+  }
+  for (let y = 0; y < height; y += gridSpacing) {
+    line(0, y, width, y);
+  }
+
+  // Render particles & symbols
+  for (let p of particles) {
+    p.update();
+    p.show();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+class Particle {
+  constructor() {
+    this.x = random(width);
+    this.y = random(height);
+    this.size = random(12, 22);
+    this.speedY = random(-0.3, -1.2);
+    this.alpha = random(50, 180);
+    this.symbol = random(mathSymbols);
+    this.isSymbol = random() > 0.4;
+    this.color = random(['#00f3ff', '#ff00a0', '#ffd700']);
+  }
+
+  update() {
+    this.y += this.speedY;
+    if (this.y < -20) {
+      this.y = height + 20;
+      this.x = random(width);
+    }
+  }
+
+  show() {
+    noStroke();
+    if (this.isSymbol) {
+      fill(color(this.color));
+      textSize(this.size);
+      textAlign(CENTER, CENTER);
+      text(this.symbol, this.x, this.y);
+    } else {
+      fill(color(this.color));
+      circle(this.x, this.y, this.size / 3);
+    }
+  }
+}
+</script>
+</body>
+</html>
